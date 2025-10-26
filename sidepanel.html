@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MarkSense AI</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      padding: 16px;
+      background: #f5f5f5;
+      height: 100vh;
+      overflow-y: auto;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    
+    h1 {
+      font-size: 20px;
+      margin-bottom: 16px;
+      color: #333;
+      font-weight: 600;
+    }
+    
+    h2 {
+      font-size: 16px;
+      margin-top: 20px;
+      margin-bottom: 12px;
+      color: #444;
+      font-weight: 600;
+    }
+    
+    .section {
+      background: white;
+      padding: 16px;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      margin-bottom: 16px;
+    }
+    
+    .button-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    
+    button {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      background: #2196F3;
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    button:hover {
+      background: #1976D2;
+    }
+    
+    button:active {
+      background: #0D47A1;
+    }
+    
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    
+    .control-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    label {
+      font-size: 12px;
+      color: #666;
+      font-weight: 500;
+    }
+    
+    select {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      background: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    
+    select:focus {
+      outline: none;
+      border-color: #2196F3;
+    }
+    
+    textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      resize: vertical;
+      background: #fafafa;
+    }
+    
+    textarea:focus {
+      outline: none;
+      border-color: #2196F3;
+      background: white;
+    }
+    
+    #keywords {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 40px;
+    }
+    
+    .keyword {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #E3F2FD;
+      color: #1976D2;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    
+    #marks {
+      list-style: none;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .mark-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #f9f9f9;
+      border-left: 3px solid #2196F3;
+      border-radius: 4px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .mark-item:hover {
+      background: #f0f0f0;
+    }
+    
+    .mark-item.important {
+      border-left-color: #FFC107;
+    }
+    
+    .mark-item.confused {
+      border-left-color: #F44336;
+    }
+    
+    .mark-quote {
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 4px;
+    }
+    
+    .mark-meta {
+      font-size: 11px;
+      color: #999;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: #999;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <h1>MarkSense AI</h1>
+  
+  <!-- Extract & Summarize Section -->
+  <div class="section">
+    <div class="button-group">
+      <button id="extract">抽取正文</button>
+      <button id="summarize">產生摘要</button>
+    </div>
+    
+    <div class="controls">
+      <div class="control-group">
+        <label for="tone">語氣</label>
+        <select id="tone">
+          <option value="concise">簡潔</option>
+          <option value="professional">專業</option>
+          <option value="academic">學術</option>
+        </select>
+      </div>
+      
+      <div class="control-group">
+        <label for="length">長度</label>
+        <select id="length">
+          <option value="sentence">單句</option>
+          <option value="bullets">重點</option>
+          <option value="detailed">詳細</option>
+        </select>
+      </div>
+    </div>
+    
+    <textarea id="output" readonly placeholder="摘要結果將顯示在這裡..."></textarea>
+    
+    <div class="button-group" style="margin-top: 12px;">
+      <button id="copy">複製 Markdown</button>
+      <button id="download">下載 .md</button>
+    </div>
+  </div>
+  
+  <!-- Keywords Section -->
+  <div class="section">
+    <h2>關鍵字（本地）</h2>
+    <div id="keywords">
+      <div class="empty-state">尚無關鍵字</div>
+    </div>
+  </div>
+  
+  <!-- My Marks Section -->
+  <div class="section">
+    <h2>我的標註</h2>
+    <ul id="marks">
+      <li class="empty-state">尚無標註</li>
+    </ul>
+  </div>
+
+  <!-- Load local libraries (no network calls) -->
+  <script src="libs/dompurify.min.js"></script>
+  <script src="libs/readability.js"></script>
+  <script src="libs/pdf.min.js"></script>
+  
+  <!-- Load utilities -->
+  <script src="utils/storage.js"></script>
+  <script src="utils/chunking.js"></script>
+  <script src="utils/anchor.js"></script>
+  <script src="utils/aisdk.js"></script>
+  
+  <!-- Load main side panel logic as module -->
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>
+

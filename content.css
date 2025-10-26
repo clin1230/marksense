@@ -1,0 +1,76 @@
+/* Content styles for MarkSense */
+/* Injected into all pages */
+
+/* Floating toolbar - dark theme */
+.marksense-toolbar {
+  position: fixed;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  z-index: 999999;
+  
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  
+  background: rgba(30, 30, 30, 0.95);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(8px);
+}
+
+/* Toolbar buttons */
+.marksense-btn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.marksense-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.marksense-btn:active {
+  transform: scale(0.95);
+}
+
+/* Important highlight - gold translucent */
+.marksense-highlight-important {
+  background: rgba(255, 193, 7, 0.3);
+  border-bottom: 2px solid rgba(255, 193, 7, 0.6);
+  padding: 2px 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.marksense-highlight-important:hover {
+  background: rgba(255, 193, 7, 0.4);
+}
+
+/* Confused highlight - soft red translucent */
+.marksense-highlight-confused {
+  background: rgba(244, 67, 54, 0.25);
+  border-bottom: 2px solid rgba(244, 67, 54, 0.5);
+  padding: 2px 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.marksense-highlight-confused:hover {
+  background: rgba(244, 67, 54, 0.35);
+}
+

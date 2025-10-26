@@ -1,0 +1,43 @@
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# Node modules (if you add build tools later)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build artifacts (future)
+dist/
+build/
+
+# Test files
+test-data/
+*.test.js
+
+# Personal notes
+notes.txt
+TODO.txt
+
+# Chrome extension artifacts
+*.crx
+*.pem
+*.zip
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.local
+

@@ -1,0 +1,61 @@
+{
+  "manifest_version": 3,
+  "name": "MarkSense",
+  "version": "1.0.0",
+  "description": "Offline note-taking Chrome extension with AI processing",
+  "permissions": [
+    "storage",
+    "scripting",
+    "activeTab",
+    "sidePanel",
+    "contextMenus",
+    "commands"
+  ],
+  "host_permissions": [],
+  "background": {
+    "service_worker": "sw.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open MarkSense"
+  },
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; connect-src 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; worker-src 'self'"
+  },
+  "commands": {
+    "mark_important": {
+      "suggested_key": {
+        "default": "Alt+I"
+      },
+      "description": "Mark selection as important"
+    },
+    "mark_confused": {
+      "suggested_key": {
+        "default": "Alt+Q"
+      },
+      "description": "Mark selection as confused (Alt+Q for Question)"
+    },
+    "translate_block": {
+      "suggested_key": {
+        "default": "Alt+T"
+      },
+      "description": "Translate selected block"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["libs/*", "utils/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
+
