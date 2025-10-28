@@ -103,14 +103,46 @@ Sanitize HTML to prevent XSS attacks.
 
 ## 🚀 Usage Guide
 
-### Highlighting Text
+### User Experience:
+
+#### Summarize Section
+
+1. The user turns on the extension.
+
+2. The user selects a context and clicks “Generate Summary.” The extension uses the **Summarizer API** to summarize the selected content.
+
+3. The user can adjust the tone and length of the summary using dropdown controls.
+
+4. By clicking “Copy Markdown,” the user can copy the summary in Markdown format.
+
+5. By clicking “Download .md,” the user can export the summary directly as a Markdown file.
+
+#### Keywords Section
+After generating the summary, the extension automatically identifies important keywords. When the user clicks a keyword, the extension fetches three related articles along with their URLs. The user can then navigate to these external resources to learn more about the topic. This functionality is powered by the **Prompt API**.
+
+#### My Highlights Section
+1. The user can highlight words or phrases that they find important or confusing. These highlights are stored in this section. For confusing keywords, the extension also generates definitions using the Prompt API and displays them here.
+
+2. When the user hovers over a highlight, a delete button appears, allowing them to easily remove it.
+
+
+### User Interface:
+
+#### Highlighting Text
 
 **Method 1: Mouse Selection + Toolbar**
+
 
 1. Select text on any webpage
 2. Floating toolbar appears above selection
 3. Click ⭐ (important) or ❓ (confused)
-4. Text is highlighted and saved locally
+4. If users click ⭐, the text would be highlighted in yellow color. 
+5. If users click ❓, the text would be highlighted in red color. 
+6. These highlight keywords will show on //to be continue
+7. Text is highlighted and saved locally
+
+//Additional features
+8. The generated summary becomes more tailored as the user highlights important content. The more important highlights the user adds, the more the summary will focus on and expand upon those key points.
 
 **Method 2: Keyboard Shortcuts**
 
@@ -118,24 +150,27 @@ Sanitize HTML to prevent XSS attacks.
 2. Press `Alt+I` for important or `Alt+?` for confused
 3. Text is highlighted and saved locally
 
-### Extracting & Summarizing Content
+### Summarize Section
 
 1. **Open side panel** - Click extension icon
-2. **Extract text** - Click "抽取正文" button
-   - Uses Readability for clean article extraction
-   - Falls back to basic text if Readability unavailable
-3. **View keywords** - Automatically generated after extraction
-4. **Generate summary** - Click "產生摘要"
+1. **Generate summary** - Click "產生摘要"
    - Choose tone: 簡潔/專業/學術
    - Choose length: 單句/重點/詳細
-5. **Export** - Copy as Markdown or download `.md` file
+1. **Export** - Copy as Markdown or download `.md` file
+1. **Google Built-in API** - Summarizer API
+
+### Keywords Section
+1. **View keywords** - Automatically generated after summarizing.
+1. **Related articles** - Automatically generated 3 articles after users select a keyword.
 
 ### Managing Highlights
 
-- **View highlights** - Open side panel → "我的標註" section
+- **View highlights** - Open side panel → "我的標註" section. Each keyword shows their definitions and 
 - **Filter by page** - Only shows highlights for current URL
 - **Click to navigate** - Click a highlight to scroll to it on the page
 - **Persistent storage** - Highlights restore on page reload
+- **Google Built-in API** - Prompt API: 
+
 
 ---
 
@@ -200,10 +235,37 @@ The extension now uses Chrome's built-in Summarizer API when available:
 
 **API Status:**
 
+**✅ INTEGRATED: Prompt API (Chrome 138+)**
+
+The extension also uses Chrome's on-device Prompt API for custom prompting tasks:
+
+- **Used for**: Generating keyword-related articles and concise definitions in `Keywords` and `我的標註`
+- **On-Device AI**: Runs locally with Gemini Nano
+- **Zero Network Calls**: Fully offline; respects strict CSP
+- **Smart Fallback**: Falls back to deterministic templates if API unavailable
+- **No API Keys**: Works out-of-the-box once enabled
+
+**How to enable:**
+
+1. Use Chrome 138+ (Canary, Dev, or Stable with on-device model)
+2. Enable flags at `chrome://flags/`:
+   - `#optimization-guide-on-device-model` → Enabled BypassPerfRequirement
+   - `#prompt-api-for-gemini-nano` → Enabled
+3. Download model at `chrome://components/` → "Optimization Guide On Device Model"
+
+**Prompt usage in this extension:**
+
+- For a selected keyword, the Prompt API is asked to return:
+  - A brief definition suitable for tooltips
+  - Three related article titles with short descriptions and URLs (when context permits)
+- Prompts are concise and grounded in the page/context selection; outputs are sanitized before rendering.
+
+**API Status:**
+
 - ✅ Summarizer API - Integrated (Chrome 138+)
+- ✅ Prompt API - Integrated (Chrome 138+)
 - ⏳ Rewriter API - Planned
 - ⏳ Translator API - Planned
-- ⏳ Prompt API - Planned
 
 ---
 
