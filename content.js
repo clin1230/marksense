@@ -335,13 +335,74 @@ var Anchor = {
   },
 
   /**
+   * Highlight text directly from a Range object (for immediate highlighting)
+   * @param {Range} range - DOM Range object to highlight
+   * @param {string} cssClass - CSS class name for the highlight span
+   * @param {string} recordId - Optional record ID to store on the highlight
+   * @returns {HTMLElement|null} The created highlight span or null on failure
+   */
+  highlightRange(range, cssClass, recordId = null) {
+    if (!range || range.collapsed) {
+      return null;
+    }
+
+    try {
+      // Check if the selection is already inside a highlight
+      const commonAncestor = range.commonAncestorContainer;
+      let checkNode = commonAncestor.nodeType === Node.TEXT_NODE 
+        ? commonAncestor.parentElement 
+        : commonAncestor;
+      
+      while (checkNode && checkNode !== document.body) {
+        if (checkNode.classList && (
+          checkNode.classList.contains('marksense-highlight-important') ||
+          checkNode.classList.contains('marksense-highlight-confused')
+        )) {
+          // Already highlighted, update record ID if provided
+          if (recordId) {
+            checkNode.setAttribute('data-record-id', recordId);
+          }
+          console.log('Text already highlighted, skipping');
+          return checkNode;
+        }
+        checkNode = checkNode.parentElement;
+      }
+
+      // Create highlight span
+      const highlightSpan = document.createElement('span');
+      highlightSpan.className = cssClass;
+      if (recordId) {
+        highlightSpan.setAttribute('data-record-id', recordId);
+      }
+
+      // Wrap the range contents
+      try {
+        const contents = range.extractContents();
+        highlightSpan.appendChild(contents);
+        range.insertNode(highlightSpan);
+      } catch (e) {
+        // Fallback to surroundContents
+        range.surroundContents(highlightSpan);
+      }
+
+      console.log(`Highlighted text directly from range with class: ${cssClass}`);
+      return highlightSpan;
+
+    } catch (error) {
+      console.error('Failed to highlight range:', error);
+      return null;
+    }
+  },
+
+  /**
    * Highlight text at a match location by wrapping in a span
    * @param {Object} match - { node, offset, length } from findMatch
    * @param {string} quote - The text to highlight
    * @param {string} cssClass - CSS class name for the highlight span
+   * @param {string} recordId - Optional record ID to store on the highlight
    * @returns {HTMLElement|null} The created highlight span or null on failure
    */
-  highlightAt(match, quote, cssClass) {
+  highlightAt(match, quote, cssClass, recordId = null) {
     if (!match || !match.node || !cssClass) {
       return null;
     }
@@ -357,6 +418,20 @@ var Anchor = {
         return null;
       }
 
+      // Check if this text is already highlighted
+      const parent = textNode.parentElement;
+      if (parent && (
+        parent.classList.contains('marksense-highlight-important') ||
+        parent.classList.contains('marksense-highlight-confused')
+      )) {
+        // Already highlighted, just update record ID if provided
+        if (recordId) {
+          parent.setAttribute('data-record-id', recordId);
+        }
+        console.log('Text already highlighted, skipping');
+        return parent;
+      }
+
       // Verify the text matches
       const actualText = textNode.textContent.substring(offset, offset + length);
       if (actualText !== quote) {
@@ -369,12 +444,28 @@ var Anchor = {
       range.setStart(textNode, offset);
       range.setEnd(textNode, offset + length);
 
+      // Check if range is valid and doesn't cross element boundaries
+      if (range.collapsed) {
+        console.warn('Range is collapsed, cannot highlight');
+        return null;
+      }
+
       // Create highlight span
       const highlightSpan = document.createElement('span');
       highlightSpan.className = cssClass;
+      if (recordId) {
+        highlightSpan.setAttribute('data-record-id', recordId);
+      }
       
-      // Wrap the range contents
-      range.surroundContents(highlightSpan);
+      // Use extractContents and insertNode for better compatibility
+      try {
+        const contents = range.extractContents();
+        highlightSpan.appendChild(contents);
+        range.insertNode(highlightSpan);
+      } catch (e) {
+        // Fallback to surroundContents if extractContents fails
+        range.surroundContents(highlightSpan);
+      }
 
       console.log(`Highlighted text with class: ${cssClass}`);
       return highlightSpan;
@@ -382,6 +473,42 @@ var Anchor = {
     } catch (error) {
       console.error('Failed to highlight text:', error);
       return null;
+    }
+  },
+
+  /**
+   * Remove a highlight by unwrapping the span
+   * @param {HTMLElement} highlightSpan - The highlight span to remove
+   * @returns {boolean} True if removed successfully
+   */
+  removeHighlight(highlightSpan) {
+    if (!highlightSpan || !highlightSpan.parentNode) {
+      return false;
+    }
+
+    try {
+      // Get the record ID before removing
+      const recordId = highlightSpan.getAttribute('data-record-id');
+      
+      // Move all children of the highlight span to its parent
+      const parent = highlightSpan.parentNode;
+      while (highlightSpan.firstChild) {
+        parent.insertBefore(highlightSpan.firstChild, highlightSpan);
+      }
+      
+      // Remove the highlight span
+      parent.removeChild(highlightSpan);
+      
+      // Normalize parent to merge adjacent text nodes
+      if (parent.nodeType === Node.TEXT_NODE || parent.nodeType === Node.ELEMENT_NODE) {
+        parent.normalize();
+      }
+      
+      console.log(`Removed highlight${recordId ? ' (record: ' + recordId + ')' : ''}`);
+      return true;
+    } catch (error) {
+      console.error('Failed to remove highlight:', error);
+      return false;
     }
   },
 
@@ -503,6 +630,12 @@ let currentRange = null;
  * Create the floating toolbar UI
  */
 function createToolbar() {
+  // Ensure body exists
+  if (!document.body) {
+    console.warn('Cannot create toolbar: document.body not available');
+    return null;
+  }
+
   const toolbar = document.createElement('div');
   toolbar.className = 'marksense-toolbar';
   toolbar.style.display = 'none';
@@ -526,7 +659,14 @@ function createToolbar() {
   toolbar.appendChild(importantBtn);
   toolbar.appendChild(confusedBtn);
 
-  document.body.appendChild(toolbar);
+  try {
+    document.body.appendChild(toolbar);
+    console.log('MarkSense toolbar created successfully');
+  } catch (error) {
+    console.error('Failed to append toolbar to body:', error);
+    return null;
+  }
+  
   return toolbar;
 }
 
@@ -589,21 +729,40 @@ async function handleMarkSelection(type) {
       type: type
     };
 
-    // Save to storage
-    await Storage.addRecord(record);
-    console.log('Record saved:', record);
-
-    // Highlight immediately
+    // Highlight immediately using the current range (before saving to storage)
+    // This ensures the highlight appears instantly when marking
     const cssClass = type === 'important' 
       ? 'marksense-highlight-important' 
       : 'marksense-highlight-confused';
 
-    const match = Anchor.findMatch(anchor);
-    if (match) {
-      Anchor.highlightAt(match, anchor.quote, cssClass);
+    // Clone the range to preserve it before highlighting
+    const rangeClone = currentRange.cloneRange();
+    
+    // Highlight immediately using the range
+    let highlightSpan = Anchor.highlightRange(rangeClone, cssClass);
+    
+    // If immediate highlighting failed, try finding the match
+    if (!highlightSpan) {
+      console.log('Direct range highlight failed, trying to find match...');
+      const match = Anchor.findMatch(anchor);
+      if (match) {
+        highlightSpan = Anchor.highlightAt(match, anchor.quote, cssClass);
+      }
+    }
+
+    // Save to storage (after highlighting so user sees immediate feedback)
+    const savedRecord = await Storage.addRecord(record);
+    console.log('Record saved:', savedRecord);
+
+    // Update highlight with record ID and setup click handler
+    if (highlightSpan) {
+      if (highlightSpan.setAttribute) {
+        highlightSpan.setAttribute('data-record-id', savedRecord.id);
+      }
+      setupHighlightClickHandler(highlightSpan, savedRecord.id);
       console.log(`Highlighted as ${type}`);
     } else {
-      console.warn('Could not find match for highlighting');
+      console.warn('Could not highlight text');
     }
 
     // Hide toolbar
@@ -643,6 +802,10 @@ document.addEventListener('mouseup', (event) => {
       // Create toolbar if it doesn't exist
       if (!floatingToolbar) {
         floatingToolbar = createToolbar();
+        if (!floatingToolbar) {
+          console.error('Failed to create toolbar');
+          return;
+        }
       }
 
       // Position and show toolbar
@@ -661,14 +824,88 @@ document.addEventListener('scroll', hideToolbar);
 window.addEventListener('resize', hideToolbar);
 
 /**
- * Listen for COMMAND messages from service worker
+ * Listen for messages from service worker and sidepanel
  */
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
   console.log('Content script received message:', request);
 
   if (request.type === 'COMMAND') {
     handleCommand(request.command);
     sendResponse({ status: 'ok', command: request.command });
+  } else if (request.type === 'REMOVE_HIGHLIGHT') {
+    // Remove highlight from page by record ID
+    const recordId = request.recordId;
+    if (recordId) {
+      try {
+        // Try to find highlight by record ID
+        let highlightSpan = document.querySelector(`[data-record-id="${recordId}"]`);
+        
+        // If not found, try finding by searching all highlights for matching text
+        if (!highlightSpan) {
+          const allHighlights = document.querySelectorAll(
+            '.marksense-highlight-important, .marksense-highlight-confused'
+          );
+          
+          // Try to get the record from storage to match by quote
+          try {
+            const records = await Storage.loadAll();
+            const record = records.find(r => r.id === recordId);
+            
+            if (record) {
+              // Find highlight that matches the quote text
+              for (const hl of allHighlights) {
+                const hlText = (hl.textContent || hl.innerText || '').trim();
+                const recordQuote = record.quote.trim();
+                if (hlText === recordQuote || hlText.includes(recordQuote) || recordQuote.includes(hlText)) {
+                  highlightSpan = hl;
+                  break;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('Could not load records to match highlight:', e);
+          }
+        }
+        
+        if (highlightSpan) {
+          // Remove from DOM immediately
+          Anchor.removeHighlight(highlightSpan);
+          console.log('Highlight removed from page:', recordId);
+          sendResponse({ status: 'ok', removed: true });
+        } else {
+          console.warn('Highlight not found on page:', recordId);
+          sendResponse({ status: 'ok', removed: false });
+        }
+      } catch (error) {
+        console.error('Error removing highlight:', error);
+        sendResponse({ status: 'error', message: error.message });
+      }
+    } else {
+      sendResponse({ status: 'error', message: 'Missing recordId' });
+    }
+  } else if (request.type === 'REMOVE_HIGHLIGHTS_BY_KEYWORD') {
+    // Remove highlights that contain the keyword
+    const keyword = request.keyword;
+    if (keyword) {
+      await removeHighlightsByKeyword(keyword);
+      sendResponse({ status: 'ok' });
+    } else {
+      sendResponse({ status: 'error', message: 'Missing keyword' });
+    }
+  } else if (request.type === 'REMOVE_HIGHLIGHTS_BY_KEYWORDS') {
+    // Remove highlights that contain any of the keywords
+    const keywords = request.keywords;
+    if (keywords && Array.isArray(keywords)) {
+      for (const keyword of keywords) {
+        await removeHighlightsByKeyword(keyword);
+      }
+      sendResponse({ status: 'ok' });
+    } else {
+      sendResponse({ status: 'error', message: 'Missing keywords array' });
+    }
+  } else if (request.type === 'SCROLL_TO_MARK') {
+    // Future: implement scroll to mark functionality
+    sendResponse({ status: 'ok' });
   } else {
     sendResponse({ status: 'ok' });
   }
@@ -717,6 +954,113 @@ async function handleCommand(command) {
 }
 
 /**
+ * Setup click handler for a highlight span to allow deletion
+ * @param {HTMLElement} highlightSpan - The highlight span element
+ * @param {string} recordId - The record ID associated with this highlight
+ */
+function setupHighlightClickHandler(highlightSpan, recordId) {
+  if (!highlightSpan || !recordId) {
+    return;
+  }
+
+  // Use double-click or right-click to delete (to avoid accidental deletion)
+  highlightSpan.addEventListener('contextmenu', async (e) => {
+    e.preventDefault();
+    
+    // Show confirmation
+    if (confirm('Delete this highlight?')) {
+      await deleteHighlight(highlightSpan, recordId);
+    }
+  });
+
+  // Also allow Ctrl+Click (or Cmd+Click on Mac) for deletion
+  highlightSpan.addEventListener('click', async (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      
+      // Show confirmation
+      if (confirm('Delete this highlight?')) {
+        await deleteHighlight(highlightSpan, recordId);
+      }
+    }
+  });
+
+  // Add title hint
+  highlightSpan.title = 'Right-click or Ctrl+Click to delete this highlight';
+}
+
+/**
+ * Delete a highlight (remove from DOM and storage)
+ * @param {HTMLElement} highlightSpan - The highlight span element
+ * @param {string} recordId - The record ID to delete
+ */
+async function deleteHighlight(highlightSpan, recordId) {
+  try {
+    // Remove from DOM
+    if (highlightSpan && highlightSpan.parentNode) {
+      Anchor.removeHighlight(highlightSpan);
+    }
+
+    // Delete from storage
+    if (recordId) {
+      await Storage.deleteRecord(recordId);
+      console.log('Highlight deleted:', recordId);
+    }
+  } catch (error) {
+    console.error('Failed to delete highlight:', error);
+  }
+}
+
+/**
+ * Remove highlights from page that contain a specific keyword
+ * @param {string} keyword - The keyword to search for in highlights
+ */
+async function removeHighlightsByKeyword(keyword) {
+  if (!keyword || keyword.trim().length === 0) {
+    return;
+  }
+
+  try {
+    // Get all highlights on the page
+    const highlights = document.querySelectorAll(
+      '.marksense-highlight-important, .marksense-highlight-confused'
+    );
+
+    const keywordLower = keyword.toLowerCase().trim();
+    let removedCount = 0;
+
+    for (const highlight of highlights) {
+      // Get the text content of the highlight
+      const highlightText = highlight.textContent || highlight.innerText || '';
+      const highlightTextLower = highlightText.toLowerCase();
+
+      // Check if highlight contains the keyword
+      if (highlightTextLower.includes(keywordLower)) {
+        const recordId = highlight.getAttribute('data-record-id');
+        
+        // Remove from DOM
+        Anchor.removeHighlight(highlight);
+        removedCount++;
+
+        // Delete from storage if record ID exists
+        if (recordId) {
+          try {
+            await Storage.deleteRecord(recordId);
+            console.log('Deleted highlight from storage:', recordId);
+          } catch (error) {
+            console.warn('Could not delete from storage:', recordId, error);
+          }
+        }
+      }
+    }
+
+    console.log(`Removed ${removedCount} highlights containing keyword: "${keyword}"`);
+  } catch (error) {
+    console.error('Failed to remove highlights by keyword:', error);
+  }
+}
+
+/**
  * Restore highlights on page load
  */
 async function restoreHighlights() {
@@ -747,7 +1091,11 @@ async function restoreHighlights() {
           ? 'marksense-highlight-important'
           : 'marksense-highlight-confused';
         
-        Anchor.highlightAt(match, record.quote, cssClass);
+        const highlightSpan = Anchor.highlightAt(match, record.quote, cssClass, record.id);
+        if (highlightSpan) {
+          // Add click handler for deletion
+          setupHighlightClickHandler(highlightSpan, record.id);
+        }
       }
     }
   } catch (error) {
@@ -755,10 +1103,22 @@ async function restoreHighlights() {
   }
 }
 
-// Restore highlights when page loads
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', restoreHighlights);
-} else {
+// Initialize - Restore highlights when page loads
+function initializeMarkSense() {
+  console.log('MarkSense initializing...');
+  console.log('Document readyState:', document.readyState);
+  
+  // Restore highlights
   restoreHighlights();
+  
+  console.log('MarkSense initialization complete');
+}
+
+// Wait for page to be ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initializeMarkSense);
+} else {
+  // Document already loaded
+  initializeMarkSense();
 }
 

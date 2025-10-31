@@ -53,11 +53,17 @@
   padding: 2px 4px;
   border-radius: 2px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
 .marksense-highlight-important:hover {
   background: rgba(255, 193, 7, 0.4);
+  box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.3);
+}
+
+.marksense-highlight-important:active {
+  background: rgba(255, 193, 7, 0.5);
 }
 
 /* Confused highlight - soft red translucent */
@@ -67,10 +73,16 @@
   padding: 2px 4px;
   border-radius: 2px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
 .marksense-highlight-confused:hover {
   background: rgba(244, 67, 54, 0.35);
+  box-shadow: 0 0 0 2px rgba(244, 67, 54, 0.3);
+}
+
+.marksense-highlight-confused:active {
+  background: rgba(244, 67, 54, 0.45);
 }
 
